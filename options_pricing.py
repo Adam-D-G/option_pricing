@@ -11,24 +11,58 @@ fx_spot_volatility = 0.1
 equity_fx_corr = 0.5
 eur_to_usd = 1.10
 
-# helper functions to read market and trade data from csv
 def read_market_data(file):
+  """
+  Read market data from a CSV file.
+    
+  Args:
+  file (str): The path to the CSV file containing market data.
+    
+  Returns:
+  list: A list of dictionaries where each dictionary represents a row of data.
+  """
   with open(file, 'r') as file:
     reader = csv.DictReader(file)
     return list(reader)
 
 def read_trade_data(file):
+  """
+  Read trade data from a CSV file.
+    
+  Args:
+  file (str): The path to the CSV file containing trade data.
+    
+  Returns:
+  list: A list of dictionaries where each dictionary represents a row of data.
+  """
   with open(file, 'r') as file:
     reader = csv.DictReader(file)
     return list(reader)
 
-# Black-Scholes formula for calculating price of European options
 def option_price(S, K, T, r, sigma, option_type, currency):
+  """
+  Calculate the price of European options using the Black-Scholes model.
+
+  Args:
+  S (float): Spot price of the underlying asset.
+  K (float): Strike price of the option.
+  T (float): Time to expiration (in years).
+  r (float): Risk-free interest rate.
+  sigma (float): Volatility of the underlying asset.
+  option_type (str): Type of option - 'call' or 'put'.
+  currency (str): Currency type of the option payoff - 'REGULAR' (USD) or 'ODD' (EUR).
+
+  Returns:
+  float: Price of the option.
+
+  Raises:
+  ValueError: If an invalid option type is specified.
+  """
   '''
   S: spot price, K: strike price, T: time to expiry, r: interest rate,
   sigma: volatility, option_type: call or put, currency: REGULAR (USD) or ODD (EUR)
   '''
-  # to handle the case when payoff is in EUR
+  # adjust volatility for options with payoff in EUR
   if currency.lower() == 'odd':
 
     # fx spot volatility and correlation affects overall volatility
@@ -46,19 +80,27 @@ def option_price(S, K, T, r, sigma, option_type, currency):
   else:
     raise ValueError("Invalid option type. Please specify 'call' or 'put'.")
 
-# function to calculate present value, equity delta, and equity vega
 def calculate_pv_delta_vega(market_data, trade_data):
-  '''
-  market_data: table containing underlying, spot_price and volatility columns
-  trade_data: table containing trade_id, Q, underlying, T, T_p, K, call_put and type columns
-  '''
+  """
+  Calculate present value, equity delta, and equity vega for each trade.
+
+  Args:
+  market_data (list): A list of dictionaries representing market data, each containing 'underlying', 
+  'spot_price', and 'volatility' keys.
+  
+  trade_data (list): A list of dictionaries representing trade data, each containing 'trade_id', 
+  'quantity', 'underlying', 'expiry', 'payment_time', 'strike', 'call_put', and 'type' keys.
+
+  Returns:
+  list: A list of dictionaries containing results for each trade, with keys 'Trade ID', 'PV', 'Equity Delta', and 'Equity Vega'.
+  """
   results = []
   for trade in trade_data:
 
     # match each trade with its market data point
     underlying_data = next(item for item in market_data if item["underlying"] == trade["underlying"])
 
-    # extracting the necesarry values
+    # extract necesarry values
     S = float(underlying_data["spot_price"])
     sigma = float(underlying_data["volatility"])
     K = float(trade["strike"])
@@ -71,8 +113,8 @@ def calculate_pv_delta_vega(market_data, trade_data):
     # calculate the option price
     price = option_price(S, K, T, interest_rate, sigma, option_type, currency)
 
-    # when calculating the option price, we assume no payment delay
-    # here, we account for the payment delay by discounting
+    # when calculating the option price, assume no payment delay
+    # account for the payment delay when calculating PV by discounting
     payment_time_disc = np.exp(- interest_rate * (T_p - T))
     present_value = price * Q * payment_time_disc
 
@@ -91,15 +133,28 @@ def calculate_pv_delta_vega(market_data, trade_data):
     })
   return results
 
-# write results to CSV
 def write_results(results, filename):
+  """
+  Write the calculated results to a CSV file.
+
+  Args:
+  results (list of dict): List of dictionaries containing trade metrics.
+  filename (str): Name of the output CSV file.
+  """
   with open(filename, 'w', newline='') as file:
     writer = csv.DictWriter(file, fieldnames=["Trade ID", "PV", "Equity Delta", "Equity Vega"])
     writer.writeheader()
     writer.writerows(results)
 
-# main function to put everything together
 def main(market_file, trade_file, result_file):
+  """
+  Main function to execute the entire process.
+
+  Args:
+  market_file (str): Path to the market data CSV file.
+  trade_file (str): Path to the trade data CSV file.
+  result_file (str): Path to the output result CSV file.
+  """
   market_data = read_market_data(market_file)
   trade_data = read_trade_data(trade_file)
   results = calculate_pv_delta_vega(market_data, trade_data)
@@ -110,12 +165,26 @@ def main(market_file, trade_file, result_file):
 if __name__ == "__main__":
   main("market_data.csv", "trade_data.csv", "result.csv")
 
-# function to back out implied volatility
+
 def implied_volatility(S, K, T, r, price, option_type, currency):
-  '''
-  S: spot price, K: strike price, T: time to expiry, r: interest rate,
-  price: option_price, option_type: call or put, currency: REGULAR (USD) or ODD (EUR)
-  '''
+  """
+  Back out implied volatility from an option price using Brent's method.
+
+  Args:
+  S (float): Spot price of the underlying asset.
+  K (float): Strike price of the option.
+  T (float): Time to expiration (in years).
+  r (float): Risk-free interest rate.
+  price (float): Option price.
+  option_type (str): Type of option - 'call' or 'put'.
+  currency (str): Currency type of the option payoff - 'REGULAR' (USD) or 'ODD' (EUR).
+
+  Returns:
+  float or str: Implied volatility if found, there might be no roots.
+
+  Raises:
+  ValueError: If the implied volatility is not found within the specified range or other error occurs.
+  """
   try:
     # calculate option prices at two different volatility levels
     sigma_low = 0.1
