@@ -12,7 +12,7 @@ This Python project provides a tool for pricing options and calculating implied 
 ## Usage 
 
 1. Prepare your trade and market data in CSV format.
-2. Run the options_pricing.py script with appropriate arguments to price options and calculate metrics:
+2. Run the options_pricing.py script to price options and calculate metrics:
    
    ```python
    python options_pricing.py
