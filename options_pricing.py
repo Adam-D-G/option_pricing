@@ -65,6 +65,9 @@ def option_price(S, K, T, r, sigma, option_type, currency):
   # adjust volatility for options with payoff in EUR
   if currency.lower() == 'odd':
 
+    # the correlation affects the drift
+    r = r + equity_fx_corr * sigma * fx_spot_volatility
+
     # fx spot volatility and correlation affects overall volatility
     sigma = np.sqrt(sigma ** 2 + fx_spot_volatility ** 2 + 2 * equity_fx_corr * sigma * fx_spot_volatility)
 
