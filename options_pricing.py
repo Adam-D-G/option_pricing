@@ -66,7 +66,7 @@ def option_price(S, K, T, r, sigma, option_type, currency):
   if currency.lower() == 'odd':
 
     # fx spot volatility and correlation affects overall volatility
-    sigma = np.sqrt(sigma ** 2 + fx_spot_volatility ** 2 - 2 * equity_fx_corr * sigma * fx_spot_volatility)
+    sigma = np.sqrt(sigma ** 2 + fx_spot_volatility ** 2 + 2 * equity_fx_corr * sigma * fx_spot_volatility)
 
   # calculate d1 and d2
   d1 = (np.log(S / K) + (r + 0.5 * sigma ** 2) * T) / (sigma * np.sqrt(T))
